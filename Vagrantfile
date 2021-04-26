@@ -89,9 +89,14 @@ Vagrant.configure("2") do |config|
           box.vm.network "public_network", boxconfig[:public]
         end
 		
-		 box.vm.provider :virtualbox do |vb|
+		box.vm.provider :virtualbox do |vb|
             vb.customize ["modifyvm", :id, "--memory", "192"]
-          end
+        end
+		  
+		box.vm.provision "ansible" do |ansible|
+			ansible.playbook = "playbook.yml"
+			ansible.become = "true"
+		end
 
       end
 
