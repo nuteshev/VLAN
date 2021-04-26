@@ -1,0 +1,59 @@
+- hosts: all # part running on all hosts
+  become: true
+  tasks:
+  - name: enable ip_forward
+    when: inventory_hostname is match(".*Router")
+    sysctl:   
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: yes
+      state: present
+      reload: yes
+  - name: install epel-release
+    when: inventory_hostname is match("test.*")  
+    yum:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:
+      - epel-release
+  - name: install packages
+    when: inventory_hostname is match("test.*")  
+    yum:
+      name: "{{ packages }}"
+      state: present
+    vars:
+      packages:
+      - vconfig
+  - name: copy prepare.sh
+    when: inventory_hostname is match(".*Router")
+    copy:
+      src: "{{ inventory_hostname }}/prepare.sh"
+      dest: /root/prepare.sh
+      mode: 0700
+  - name: copy prepare.sh to test machines 
+    when: inventory_hostname is match("test.*")  
+    copy:
+      src: prepare.sh
+      dest: /root/prepare.sh
+      mode: 0700
+  - name: copy vlan config
+    when: inventory_hostname is match("test.*")
+    template:
+      src: ifcfg-vlan.j2
+      dest: "/etc/sysconfig/network-scripts/ifcfg-vlan{{ vlan }}"
+  - name: copy bond config
+    when: inventory_hostname == "centralRouter" or inventory_hostname == "inetRouter"
+    copy:
+      src: "{{ inventory_hostname }}/ifcfg-bond0"
+      dest: /etc/sysconfig/network-scripts/ifcfg-bond0
+  - name: copy hosts
+    copy:
+      src: hosts
+      dest: /etc/hosts
+  - name: run prepare.sh
+    shell: /root/prepare.sh
+  - name: Restart network
+    service:
+      name: network
+      state: restarted
